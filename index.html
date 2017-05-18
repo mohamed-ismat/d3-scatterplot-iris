@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>D3 Scatterplot for Iris data set</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body class="container text-center" style="padding-top:70px;">
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="#">d3-scatterplot-iris</a>
+      </div>
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="https://github.com/mohamed-ismat/d3-scatterplot-iris"><i class="fa fa-github fa-lg" aria-hidden="true"></i></a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div>
+    <h1 class="text-center">D3.js Scatterplots of the <a href="https://en.wikipedia.org/wiki/Iris_flower_data_set">Iris flower data set</a></h1><br/>
+    <div style="margin-bottom: 70px;">
+      <h3>Show/Hide Iris types</h3>
+      <label class="checkbox-inline" style="color: red;"><input type="checkbox" checked onchange="updatePlots(this)" name="setosa">Setosa</label>
+      <label class="checkbox-inline" style="color: green;"><input type="checkbox" checked onchange="updatePlots(this)" name="versicolor">Versicolor</label>
+      <label class="checkbox-inline" style="color: blue;"><input type="checkbox" checked onchange="updatePlots(this)" name="virginica">Verginica</label>
+    </div>
+
+    <div class="chart">
+      <!--The D3.js chart goes here -->
+    </div>
+
+  </div>
+
+  <script>
+
+    //config variables
+    var outerWidth = 400,
+        outerHeight = 400;
+
+    var margin = {
+      "left": 70,
+      "right": 70,
+      "top": 100,
+      "bottom": 90
+    };
+
+    var innerWidth = outerWidth - margin.left - margin.right;
+    var innerHeight = outerHeight - margin.top - margin.bottom;
+
+    var radius = 5;
+
+    var colorColumn = "species";
+
+    var xScale = d3.scale.linear().range([0, innerWidth]);
+    var yScale = d3.scale.linear().range([innerHeight, 0]);
+
+    var colorScale =
+      d3.scale.ordinal()
+        .range(["red", "green", "blue"])
+        .domain(["setosa", "versicolor", "virginica"]);
+
+
+    //initial state of the checkboxes
+    var isChecked = {
+      setosa: true,
+      versicolor: true,
+      virginica: true
+    }
+
+    //initial render
+    drawPlot("sepal_length", "sepal_width");
+    drawPlot("petal_length", "petal_width");
+
+
+    //called when any of the checkboxes is clicked
+    //updates both plots
+    function updatePlots(target) {
+      var checked = target.checked;
+      var name = target.name;
+      isChecked[name] = checked;
+
+      //remove old plots
+      var oldPlots = document.getElementsByClassName('plot');
+      while (oldPlots[0]) oldPlots[0].parentNode.removeChild(oldPlots[0]);
+
+      drawPlot("sepal_length", "sepal_width");
+      drawPlot("petal_length", "petal_width");
+    };
+
+
+    //the main function that draws a single plot
+    function drawPlot(yColumn, xColumn) {
+
+      var svg = d3.select(".chart").append("svg")
+        .classed("plot", true)
+        .attr("width", outerWidth)
+        .attr("height", outerHeight);
+
+      var g = svg.append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // Axes group
+      var xAxisG = g.append("g")
+        .attr("transform", "translate(0," + innerHeight + ")");
+
+      var title = g.append("text")
+        .style("text-anchor", "middle")
+        .attr("transform", "translate(" + (innerWidth / 2) + "," + (-0.5 * margin.top) + ")")
+        .attr("class", "title")
+        .text(yColumn + 'Vs ' + xColumn);
+
+      var xAxisLabel = xAxisG.append("text")
+        .style("text-anchor", "middle")
+        .attr("transform", "translate(" + (innerWidth / 2) + "," + (0.5 * margin.bottom) + ")")
+        .attr("class", "label")
+        .text(xColumn + " (cm)");
+
+      var yAxisG = g.append("g");
+      var yAxisLabel = yAxisG.append("text")
+        .style("text-anchor", "end")
+        .attr("transform", "rotate(-90)")
+        .attr("dy", "-3em")
+        .attr("dx", "-8em")
+        .attr("class", "label")
+        .text(yColumn + " (cm)");
+
+      // Axes
+      var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+      var yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+      //transform the data into a scatterplot
+      function scatterPlot(data) {
+        if (data === null) return;
+        xScale.domain(d3.extent(data, function(d) {
+          return d[xColumn];
+        }));
+        yScale.domain([0, d3.max(data, function(d) {
+          return d[yColumn];
+        })]);
+
+        xAxisG.call(xAxis);
+        yAxisG.call(yAxis);
+
+        // Bind
+        var circles = g.selectAll("circle").data(data);
+        // Enter
+        circles.enter().append("circle");
+        // Update
+        circles
+          .attr("r", radius)
+          .attr("cx", function(d) {
+            return xScale(d[xColumn]);
+          })
+          .attr("cy", function(d) {
+            return yScale(d[yColumn]);
+          })
+          .attr("fill", function(d) {
+            return colorScale(d[colorColumn]);
+          });
+        // Exit
+        circles.exit().remove();
+
+
+        //*******Legend******
+        // draw legend
+        var legend = svg.selectAll(".legend")
+          .data(colorScale.domain())
+          .enter().append("g")
+          .attr("class", "legend")
+          .attr("transform", function(d, i) {
+            return "translate(-10," + i * 20 + ")";
+          });
+
+        // draw legend colored rectangles
+        legend.append("rect")
+          .attr("x", outerWidth - 18)
+          .attr("width", 18)
+          .attr("height", 18)
+          .style("fill", colorScale);
+
+        // draw legend text
+        legend.append("text")
+          .attr("x", outerWidth - 24)
+          .attr("y", 9)
+          .attr("dy", ".35em")
+          .style("text-anchor", "end")
+          .text(function(d) {
+            return d;
+          })
+      }
+
+      //mapping csv row data to variables
+      function type(d) {
+        d.sepal_length = +d.sepal_length;
+        d.sepal_width = +d.sepal_width;
+        d.petal_length = +d.petal_length;
+        d.petal_width = +d.petal_width;
+        if (!isChecked[d.species]) return;
+        return d;
+      }
+
+      //importing data from csv and passing it to scatterPlot
+      d3.csv("./iris.csv", type, scatterPlot);
+
+    }
+
+  </script>
+</body>
+
+</html>
